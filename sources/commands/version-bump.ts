@@ -5,6 +5,7 @@ import {
   Project,
   StreamReport,
   Workspace,
+  structUtils,
 } from "@yarnpkg/core";
 import { BaseCommand } from "@yarnpkg/cli";
 import { Command } from "clipanion";
@@ -40,12 +41,15 @@ export default class VersionBump extends BaseCommand {
 
     const report = await StreamReport.start(
       { configuration, stdout: this.context.stdout, includeLogs: true },
-      (report: StreamReport) => project.resolveEverything({ cache, report })
+      async (report: StreamReport) => {
+        await project.resolveEverything({ cache, report });
+      }
     );
+    if (report.hasErrors()) {
+      return report.exitCode();
+    }
 
     await project.persist();
-
-    return report.exitCode();
   }
 
   async getRoot(): Promise<{
@@ -130,6 +134,8 @@ export default class VersionBump extends BaseCommand {
   }
 
   updateManifests(updatedWorkspaces, nextVersion) {
+    const newRange = `workspace:^${nextVersion}`;
+
     const dependencyTypes: HardDependencies[] = [
       "dependencies",
       "devDependencies",
@@ -141,9 +147,10 @@ export default class VersionBump extends BaseCommand {
       for (const dependencyType of dependencyTypes) {
         for (const workspace of updatedWorkspaces) {
           const { identHash } = workspace.manifest.name!;
-          const depVersion = manifest[dependencyType].get(identHash);
-          if (depVersion?.range.startsWith("workspace:")) {
-            depVersion.range = `workspace:^${nextVersion}`;
+          const desc = manifest[dependencyType].get(identHash);
+          if (desc?.range.startsWith("workspace:")) {
+            const newDesc = structUtils.makeDescriptor(desc, newRange);
+            manifest[dependencyType].set(identHash, newDesc);
           }
         }
       }
