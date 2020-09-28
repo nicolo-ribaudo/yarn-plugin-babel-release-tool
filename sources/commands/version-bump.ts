@@ -14,7 +14,7 @@ import inquirer from "inquirer";
 import semver from "semver";
 
 import { forEachWorkspace } from "../utils/workspace";
-import { getLastGitTag, getChangedFiles } from "../utils/git";
+import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
 import { IGNORE } from "../config";
 
@@ -22,7 +22,7 @@ export default class VersionBump extends BaseCommand {
   @Command.Path("version", "bump")
   async execute() {
     const { configuration, project, cache } = await this.getRoot();
-    const { lastTagName, lastVersion } = await getLastGitTag();
+    const { lastTagName, lastVersion } = await git.getLastTag();
     const changedWorkspaces = await this.getChangedWorkspaces(
       project,
       lastTagName
@@ -34,7 +34,7 @@ export default class VersionBump extends BaseCommand {
       Major: semver.inc(lastVersion, "major"),
     });
 
-    const confirm = await this.promptConfirm(nextVersion, changedWorkspaces);
+    let confirm = await this.promptConfirm(nextVersion, changedWorkspaces);
     if (!confirm) return 0;
 
     this.updateManifests(changedWorkspaces, nextVersion);
@@ -50,6 +50,8 @@ export default class VersionBump extends BaseCommand {
     }
 
     await project.persist();
+
+    await this.gitCommitAndTag(nextVersion);
   }
 
   async getRoot(): Promise<{
@@ -80,7 +82,7 @@ export default class VersionBump extends BaseCommand {
     const changedWorkspaces: Workspace[] = [];
 
     await forEachWorkspace(project, async (workspace) => {
-      let changedFiles = await getChangedFiles(since, workspace.cwd);
+      let changedFiles = await git.getChangedFiles(since, workspace.cwd);
       changedFiles = changedFiles.filter((file) => !IGNORE(file));
       if (changedFiles.length === 0) return;
 
@@ -155,5 +157,20 @@ export default class VersionBump extends BaseCommand {
         }
       }
     }
+  }
+
+  async gitCommitAndTag(version: string) {
+    const tag = `v${version}`;
+
+    const { confirm } = await inquirer.prompt({
+      type: "confirm",
+      name: "confirm",
+      message: `Are you sure you want to commit and tag these changes as "${tag}"?`,
+      default: false,
+    });
+    if (!confirm) return 0;
+
+    await git.commit(tag);
+    await git.tag(tag);
   }
 }
