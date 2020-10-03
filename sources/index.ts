@@ -1,7 +1,7 @@
 import type { Plugin } from "@yarnpkg/core";
 import { SettingsType } from "@yarnpkg/core";
 
-import VersionBump from "./commands/version-bump";
+import Version from "./commands/version-bump";
 
 export default {
   configuration: {
@@ -19,5 +19,5 @@ export default {
     },
   },
 
-  commands: [VersionBump],
+  commands: [Version],
 } as Plugin;

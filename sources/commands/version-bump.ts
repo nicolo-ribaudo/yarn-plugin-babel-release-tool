@@ -6,6 +6,7 @@ import {
   StreamReport,
   Workspace,
   structUtils,
+  Manifest,
 } from "@yarnpkg/core";
 import { BaseCommand } from "@yarnpkg/cli";
 import { Command } from "clipanion";
@@ -18,8 +19,16 @@ import { forEachWorkspace } from "../utils/workspace";
 import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
 
-export default class VersionBump extends BaseCommand {
-  @Command.Path("version", "bump")
+export default class Version extends BaseCommand {
+  @Command.Array("-f,--force-update", {
+    // @ts-ignore
+    description:
+      "Bump the version of a pakcage even it there aren't any changed detected." +
+      " This option can be specified multiple times, for multiple packages.",
+  })
+  forceUpdates!: string[];
+
+  @Command.Path("release-tool", "version")
   async execute() {
     const { configuration, project, cache } = await this.getRoot();
     const { lastTagName, lastVersion } = await git.getLastTag();
@@ -30,7 +39,8 @@ export default class VersionBump extends BaseCommand {
     const changedWorkspaces = await this.getChangedWorkspaces(
       project,
       lastTagName,
-      ignoreChanges
+      ignoreChanges,
+      new Set(this.forceUpdates)
     );
 
     const nextVersion = await this.promptVersion(lastVersion, {
@@ -86,7 +96,8 @@ export default class VersionBump extends BaseCommand {
   async getChangedWorkspaces(
     project: Project,
     since: string,
-    ignorePatterns: string[]
+    ignorePatterns: string[],
+    forced: Set<string>
   ) {
     const ignoreFilters = ignorePatterns.map((p) =>
       minimatch.filter(`!${p}`, { matchBase: true, dot: true })
@@ -95,13 +106,18 @@ export default class VersionBump extends BaseCommand {
     const changedWorkspaces: Workspace[] = [];
 
     await forEachWorkspace(project, async (workspace) => {
+      if (forced.has(pkgName(workspace.manifest))) {
+        changedWorkspaces.push(workspace);
+        return;
+      }
+
       const changedFiles = ignoreFilters.reduce(
         (changedFiles, filter) => changedFiles.filter(filter),
         await git.getChangedFiles(since, workspace.cwd)
       );
-      if (changedFiles.length === 0) return;
-
-      changedWorkspaces.push(workspace);
+      if (changedFiles.length > 0) {
+        changedWorkspaces.push(workspace);
+      }
     });
 
     return changedWorkspaces.sort(compareBy("cwd"));
@@ -130,11 +146,7 @@ export default class VersionBump extends BaseCommand {
     console.log("");
     console.log("Changes:");
     for (const { manifest: m } of packages) {
-      const fullname = m.name!.scope
-        ? `@${m.name!.scope}/${m.name!.name}`
-        : m.name!.name;
-
-      console.log(` - ${fullname}: ${m.version} => ${version}`);
+      console.log(` - ${pkgName(m)}: ${m.version} => ${version}`);
     }
     console.log("");
 
@@ -186,4 +198,8 @@ export default class VersionBump extends BaseCommand {
     await git.commit(tag);
     await git.tag(tag);
   }
+}
+
+function pkgName(m: Manifest) {
+  return m.name!.scope ? `@${m.name!.scope}/${m.name!.name}` : m.name!.name;
 }
