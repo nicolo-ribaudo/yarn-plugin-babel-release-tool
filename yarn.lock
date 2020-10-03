@@ -3814,6 +3814,7 @@ typescript@^3.9.5:
     "@yarnpkg/core": ^2.2.0
     clipanion: ^2.4.4
     inquirer: ^7.3.3
+    minimatch: ^3.0.4
     semver: ^7.3.2
     typescript: ^3.9.5
   languageName: unknown

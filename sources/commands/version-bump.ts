@@ -12,20 +12,25 @@ import { Command } from "clipanion";
 
 import inquirer from "inquirer";
 import semver from "semver";
+import minimatch from "minimatch";
 
 import { forEachWorkspace } from "../utils/workspace";
 import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
-import { IGNORE } from "../config";
 
 export default class VersionBump extends BaseCommand {
   @Command.Path("version", "bump")
   async execute() {
     const { configuration, project, cache } = await this.getRoot();
     const { lastTagName, lastVersion } = await git.getLastTag();
+
+    const ignoreChanges =
+      project.configuration.get("releaseTool")?.get("ignoreChanges") ?? [];
+
     const changedWorkspaces = await this.getChangedWorkspaces(
       project,
-      lastTagName
+      lastTagName,
+      ignoreChanges
     );
 
     const nextVersion = await this.promptVersion(lastVersion, {
@@ -78,20 +83,28 @@ export default class VersionBump extends BaseCommand {
     return { configuration, project, cache };
   }
 
-  async getChangedWorkspaces(project: Project, since: string) {
+  async getChangedWorkspaces(
+    project: Project,
+    since: string,
+    ignorePatterns: string[]
+  ) {
+    const ignoreFilters = ignorePatterns.map((p) =>
+      minimatch.filter(`!${p}`, { matchBase: true, dot: true })
+    );
+
     const changedWorkspaces: Workspace[] = [];
 
     await forEachWorkspace(project, async (workspace) => {
-      let changedFiles = await git.getChangedFiles(since, workspace.cwd);
-      changedFiles = changedFiles.filter((file) => !IGNORE(file));
+      const changedFiles = ignoreFilters.reduce(
+        (changedFiles, filter) => changedFiles.filter(filter),
+        await git.getChangedFiles(since, workspace.cwd)
+      );
       if (changedFiles.length === 0) return;
 
       changedWorkspaces.push(workspace);
     });
 
-    changedWorkspaces.some(compareBy("cwd"));
-
-    return changedWorkspaces;
+    return changedWorkspaces.sort(compareBy("cwd"));
   }
 
   async promptVersion(
@@ -135,7 +148,7 @@ export default class VersionBump extends BaseCommand {
     return confirm;
   }
 
-  updateManifests(updatedWorkspaces, nextVersion) {
+  updateManifests(updatedWorkspaces: Workspace[], nextVersion: string) {
     const newRange = `workspace:^${nextVersion}`;
 
     const dependencyTypes: HardDependencies[] = [
