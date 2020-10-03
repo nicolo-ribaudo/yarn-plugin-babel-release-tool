@@ -23,19 +23,27 @@ export default class Version extends BaseCommand {
   static usage: Usage = Command.Usage({
     description: "Bump the version of the updated packages",
     details: `
-      This command will check which packages have been changed since the last git tag. Then, it will ask for the new version (patch, minor or major), update the package.json files and then create a new git tag.
+      This command will check which packages have been changed since the last git tag. Then, it update the package.json files and then create a new git tag.
 
-      The \`-f,--force\` option allows you to specify a package that must be updated even if git doesn't detect any change. It can be specified multiple times, for multiple packages.
+      If no version is specified, it will prompt for it.
+
+      - The \`-f,--force\` option allows you to specify a package that must be updated even if git doesn't detect any change. It can be specified multiple times, for multiple packages.
+      - The \`--yes\` option disables the confirmation prompts.
+      - If \`--tag-version-prefix\` is specified, it will be used to build the tag name (default: \`v\`).
     `,
   });
 
-  @Command.Array("-f,--force-update", {
-    // @ts-ignore
-    description:
-      "Bump the version of a pakcage even it there aren't any changed detected." +
-      " This option can be specified multiple times, for multiple packages.",
-  })
+  @Command.String({ required: false })
+  version!: string | undefined;
+
+  @Command.Array("-f,--force-update")
   forceUpdates!: string[];
+
+  @Command.Boolean("--yes")
+  yes!: boolean;
+
+  @Command.String("--tag-version-prefix")
+  tagVersionPrefix!: string | undefined;
 
   @Command.Path("release-tool", "version")
   async execute() {
@@ -52,14 +60,18 @@ export default class Version extends BaseCommand {
       new Set(this.forceUpdates)
     );
 
-    const nextVersion = await this.promptVersion(lastVersion, {
-      Patch: semver.inc(lastVersion, "patch"),
-      Minor: semver.inc(lastVersion, "minor"),
-      Major: semver.inc(lastVersion, "major"),
-    });
+    const nextVersion =
+      this.version ??
+      (await this.promptVersion(lastVersion, {
+        Patch: semver.inc(lastVersion, "patch"),
+        Minor: semver.inc(lastVersion, "minor"),
+        Major: semver.inc(lastVersion, "major"),
+      }));
 
-    let confirm = await this.promptConfirm(nextVersion, changedWorkspaces);
-    if (!confirm) return 0;
+    if (!this.yes) {
+      const confirm = await this.promptConfirm(nextVersion, changedWorkspaces);
+      if (!confirm) return 0;
+    }
 
     this.updateManifests(changedWorkspaces, nextVersion);
 
@@ -194,15 +206,17 @@ export default class Version extends BaseCommand {
   }
 
   async gitCommitAndTag(version: string) {
-    const tag = `v${version}`;
+    const tag = (this.tagVersionPrefix ?? "v") + version;
 
-    const { confirm } = await inquirer.prompt({
-      type: "confirm",
-      name: "confirm",
-      message: `Are you sure you want to commit and tag these changes as "${tag}"?`,
-      default: false,
-    });
-    if (!confirm) return 0;
+    if (!this.yes) {
+      const { confirm } = await inquirer.prompt({
+        type: "confirm",
+        name: "confirm",
+        message: `Are you sure you want to commit and tag these changes as "${tag}"?`,
+        default: false,
+      });
+      if (!confirm) return 0;
+    }
 
     await git.commit(tag);
     await git.tag(tag);
