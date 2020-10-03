@@ -9,7 +9,7 @@ import {
   Manifest,
 } from "@yarnpkg/core";
 import { BaseCommand } from "@yarnpkg/cli";
-import { Command } from "clipanion";
+import { Command, Usage } from "clipanion";
 
 import inquirer from "inquirer";
 import semver from "semver";
@@ -20,6 +20,15 @@ import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
 
 export default class Version extends BaseCommand {
+  static usage: Usage = Command.Usage({
+    description: "Bump the version of the updated packages",
+    details: `
+      This command will check which packages have been changed since the last git tag. Then, it will ask for the new version (patch, minor or major), update the package.json files and then create a new git tag.
+
+      The \`-f,--force\` option allows you to specify a package that must be updated even if git doesn't detect any change. It can be specified multiple times, for multiple packages.
+    `,
+  });
+
   @Command.Array("-f,--force-update", {
     // @ts-ignore
     description:
