@@ -139,7 +139,11 @@ export default class Publish extends BaseCommand {
 
     return {
       registry,
-      body: npmPublishUtils.generateTarballBody(workspace, registry, this.tag),
+      body: await npmPublishUtils.generateTarballBody(
+        workspace,
+        registry,
+        this.tag
+      ),
     };
   }
 
@@ -195,6 +199,8 @@ export default class Publish extends BaseCommand {
     report: Report
   ) {
     const ident = workspace.manifest.name!;
+
+    console.log(ident, body);
 
     try {
       await npmHttpUtils.put(npmHttpUtils.getIdentUrl(ident), body, {
