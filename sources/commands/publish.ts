@@ -174,15 +174,19 @@ export default class Publish extends BaseCommand {
         const { body, registry } = metadata.get(workspace)!;
 
         promises.push(
-          limit(() => {
+          limit(async () => {
             if (report.hasErrors()) return;
-            return this.publishPackage(
-              workspace,
-              body,
-              registry,
-              configuration,
-              report
-            );
+            try {
+              await this.publishPackage(
+                workspace,
+                body,
+                registry,
+                configuration,
+                report
+              );
+            } finally {
+              graph.deleteWorkspace(workspace);
+            }
           })
         );
       }
@@ -199,8 +203,6 @@ export default class Publish extends BaseCommand {
     report: Report
   ) {
     const ident = workspace.manifest.name!;
-
-    console.log(ident, body);
 
     try {
       await npmHttpUtils.put(npmHttpUtils.getIdentUrl(ident), body, {
@@ -219,7 +221,10 @@ export default class Publish extends BaseCommand {
             ? error.response.body.error
             : `The remote server answered with HTTP ${error.response.statusCode} ${error.response.statusMessage}`;
 
-        report.reportError(MessageName.NETWORK_ERROR, message);
+        report.reportError(
+          MessageName.NETWORK_ERROR,
+          `[${pkgName(workspace.manifest)}] ${message}`
+        );
       }
     }
   }

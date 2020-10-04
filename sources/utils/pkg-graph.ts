@@ -30,6 +30,7 @@ abstract class Node {
   abstract intersects(node: Node): boolean;
   abstract workspacesIterator(): Iterable<Workspace>;
   abstract toString(): string;
+  abstract deleteWorkspace(workspace: Workspace): boolean;
 }
 
 class PackageNode extends Node {
@@ -52,6 +53,10 @@ class PackageNode extends Node {
 
   toString() {
     return pkgName(this.workspace.manifest);
+  }
+
+  deleteWorkspace(workspace: Workspace) {
+    return this.workspace === workspace;
   }
 }
 
@@ -98,6 +103,14 @@ export default class PackageGraph extends Set<Node> {
     }
 
     return super.delete(node);
+  }
+
+  deleteWorkspace(ws: Workspace) {
+    const node = this.packages.get(ws.locator.identHash);
+    if (node) {
+      return node.deleteWorkspace(ws) && this.delete(node);
+    }
+    return false;
   }
 
   detectCycles(report: Report) {
