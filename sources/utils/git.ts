@@ -19,7 +19,7 @@ export async function getLastTag() {
 export async function getHeadTags(pattern: string) {
   const filter = JSON.stringify(pattern);
   const { stdout } = await run(
-    `git tag --sort version:refname --points-at HEAD --list ${filter}`
+    `git tag --sort version:refname --points-at HEAD --list "${filter}"`
   );
 
   return stdout.split("\n").filter(Boolean);

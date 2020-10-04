@@ -59,7 +59,9 @@ export default class Version extends BaseCommand {
     const { lastTagName, lastVersion } = await git.getLastTag();
 
     const ignoreChanges =
-      project.configuration.get("releaseTool")?.get("ignoreChanges") ?? [];
+      project.configuration
+        .get<Map<string, string[]>>("releaseTool")
+        ?.get("ignoreChanges") ?? [];
 
     const changedWorkspaces = await this.getChangedWorkspaces(
       project,

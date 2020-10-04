@@ -604,18 +604,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@yarnpkg/builder@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "@yarnpkg/builder@npm:2.1.1"
+"@yarnpkg/builder@npm:^2.1.2":
+  version: 2.1.2
+  resolution: "@yarnpkg/builder@npm:2.1.2"
   dependencies:
     "@babel/core": ^7.10.2
-    "@yarnpkg/cli": ^2.2.0
-    "@yarnpkg/core": ^2.2.0
-    "@yarnpkg/fslib": ^2.2.0
-    "@yarnpkg/pnpify": ^2.2.0
+    "@yarnpkg/cli": ^2.3.0
+    "@yarnpkg/core": ^2.3.0
+    "@yarnpkg/fslib": ^2.2.2
+    "@yarnpkg/pnpify": ^2.3.0
     babel-loader: ^8.1.0
     chalk: ^3.0.0
-    clipanion: ^2.4.4
+    clipanion: ^2.6.2
     filesize: ^4.1.2
     fork-ts-checker-webpack-plugin: ^5.0.0
     semver: ^7.1.2
@@ -630,11 +630,11 @@ __metadata:
     typescript: "*"
   bin:
     builder: ./lib/cli.js
-  checksum: c8045d1a61993f54d9f81b4009a65009e7350c4a6a9f4c6895e4f4393143f9a0bf0e58319dbe6c744c0b6ddf41eb08e2eeed11798f0014409d88e1c22e4ccfef
+  checksum: 7487f9962ba1fc4588aa913ac567959400aaea78c6fb8c85fb64a6a8c66f4ae227d60416c7aff05a1978e4307b8ebe7bf1f2b042c5c24abad1bb9a228d49e9aa
   languageName: node
   linkType: hard
 
-"@yarnpkg/cli@npm:^2.2.0, @yarnpkg/cli@npm:^2.3.1":
+"@yarnpkg/cli@npm:^2.3.0, @yarnpkg/cli@npm:^2.3.1":
   version: 2.3.1
   resolution: "@yarnpkg/cli@npm:2.3.1"
   dependencies:
@@ -670,7 +670,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@yarnpkg/core@npm:^2.2.0, @yarnpkg/core@npm:^2.3.0":
+"@yarnpkg/core@npm:^2.3.0":
   version: 2.3.0
   resolution: "@yarnpkg/core@npm:2.3.0"
   dependencies:
@@ -1006,7 +1006,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@yarnpkg/pnpify@npm:^2.2.0, @yarnpkg/pnpify@npm:^2.3.1":
+"@yarnpkg/pnpify@npm:^2.3.0, @yarnpkg/pnpify@npm:^2.3.1":
   version: 2.3.1
   resolution: "@yarnpkg/pnpify@npm:2.3.1"
   dependencies:
@@ -1415,7 +1415,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"clipanion@npm:^2.4.4, clipanion@npm:^2.6.2":
+"clipanion@npm:^2.6.2":
   version: 2.6.2
   resolution: "clipanion@npm:2.6.2"
   checksum: d162deedd0bd297f0881ef2814cf00409d2c67383589345cf8ae0ae6d9eee2e7235313b392dd3ec9df85490e4875dd52c085997e4161a6c8aa4ec0a2c78f8f36
@@ -3827,7 +3827,7 @@ typescript@^3.9.5:
   resolution: "yarn-plugin-babel-version@workspace:."
   dependencies:
     "@types/node": ^14.6.3
-    "@yarnpkg/builder": ^2.1.1
+    "@yarnpkg/builder": ^2.1.2
     "@yarnpkg/cli": ^2.3.1
     "@yarnpkg/core": ^2.3.0
     "@yarnpkg/plugin-npm": ^2.3.0

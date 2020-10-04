@@ -23,6 +23,10 @@ abstract class Node {
     yield* this.dependents;
   }
 
+  hasDependencies() {
+    return this.dependencies.size > 0;
+  }
+
   abstract intersects(node: Node): boolean;
   abstract workspacesIterator(): Iterable<Workspace>;
   abstract toString(): string;
@@ -68,6 +72,24 @@ export default class PackageGraph extends Set<Node> {
         this.packages.get(depHash)?.addDependent(node);
       });
     });
+  }
+
+  getProcessableWorkspaces(): Set<Workspace> {
+    let packages = new Set<Workspace>();
+
+    // NOTE: When we'll add support for cycles, the algorithm should be:
+    // 1. Get the packages with zero dependencies
+    // 2. Otherwise, get a single cycle with zero dependencies
+
+    for (const node of this) {
+      if (!node.hasDependencies()) {
+        for (const ws of node.workspacesIterator()) {
+          packages.add(ws);
+        }
+      }
+    }
+
+    return packages;
   }
 
   delete(node: Node): boolean {
