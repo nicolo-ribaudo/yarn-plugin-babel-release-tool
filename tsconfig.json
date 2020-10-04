@@ -4,7 +4,7 @@
     "esModuleInterop": true,
     "module": "commonjs",
     "target": "es2018",
-    "lib": ["es2018", "dom"],
+    "lib": ["es2020", "dom"],
     "strictNullChecks": true
   },
   "include": ["sources/**/*.ts"]

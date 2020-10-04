@@ -60,7 +60,10 @@ export default class Publish extends BaseCommand {
           if (!confirm) return;
         }
 
-        await this.publishPackages(graph, metadata, configuration, report);
+        await report.startTimerPromise(
+          `Publishing ${workspaces.size} packages`,
+          () => this.publishPackages(graph, metadata, configuration, report)
+        );
       }
     );
 
@@ -191,7 +194,7 @@ export default class Publish extends BaseCommand {
         );
       }
 
-      await Promise.all(promises);
+      await Promise.allSettled(promises);
     } while (graph.size > 0 && !report.hasErrors());
   }
 
@@ -212,6 +215,11 @@ export default class Publish extends BaseCommand {
         // @ts-ignore
         jsonResponse: true,
       });
+
+      report.reportInfo(
+        null,
+        `Published ${pkgName(workspace.manifest)} ${workspace.manifest.version}`
+      );
     } catch (error) {
       if (error.name !== `HTTPError`) {
         throw error;
