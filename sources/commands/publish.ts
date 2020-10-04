@@ -162,14 +162,10 @@ export default class Publish extends BaseCommand {
       const chunk = graph.getProcessableWorkspaces();
 
       if (chunk.size === 0 && graph.size > 0) {
-        report.reportError(
-          MessageName.UNNAMED,
-          `Some packages could not be published:\n${Array.from(
-            graph,
-            (node) => ` - ${node}`
-          ).join("\n")}`
+        throw new Error(
+          "Some packages could not be published:\n" +
+            Array.from(graph, (node) => ` - ${node}`).join("\n")
         );
-        return;
       }
 
       const promises: Promise<unknown>[] = [];
@@ -178,7 +174,6 @@ export default class Publish extends BaseCommand {
 
         promises.push(
           limit(async () => {
-            if (report.hasErrors()) return;
             try {
               await this.publishPackage(
                 workspace,
@@ -195,7 +190,7 @@ export default class Publish extends BaseCommand {
       }
 
       await Promise.allSettled(promises);
-    } while (graph.size > 0 && !report.hasErrors());
+    } while (graph.size > 0);
   }
 
   async publishPackage(
