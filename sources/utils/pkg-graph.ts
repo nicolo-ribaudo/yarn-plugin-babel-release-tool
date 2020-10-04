@@ -78,7 +78,7 @@ export default class PackageGraph extends Set<Node> {
     return super.delete(node);
   }
 
-  detectCycles(report: Report): number {
+  detectCycles(report: Report) {
     const walkStack: PackageNode[] = [];
 
     const visit = (node: Node) => {
@@ -88,40 +88,29 @@ export default class PackageGraph extends Set<Node> {
             MessageName.CYCLIC_DEPENDENCIES,
             `Dependency cycle detected: ${walkStack.slice(i).join(",")}`
           );
-
-          return 1;
         }
       }
 
-      return walkWithStack(node);
+      walkWithStack(node);
     };
 
-    function walkWithStack(node: Node): number {
+    function walkWithStack(node: Node) {
       if (!(node instanceof PackageNode)) {
         report.reportError(
           MessageName.CYCLIC_DEPENDENCIES,
           `Dependency cycle detected: ${node}`
         );
-        return 1;
+        return;
       }
 
       walkStack.push(node);
-
-      try {
-        for (const dep of node.dependenciesIterator()) {
-          if (visit(dep)) return 1;
-        }
-      } finally {
-        walkStack.pop();
+      for (const dep of node.dependenciesIterator()) {
+        visit(dep);
       }
-
-      return 0;
+      walkStack.pop();
     }
 
-    for (const node of this) {
-      if (visit(node)) return 1;
-    }
-    return 0;
+    this.forEach(visit);
   }
 
   // NOTE: I started implementing support for flattening cycles (similar to
