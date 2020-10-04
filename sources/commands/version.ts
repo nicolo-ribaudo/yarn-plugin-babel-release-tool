@@ -15,9 +15,10 @@ import inquirer from "inquirer";
 import semver from "semver";
 import minimatch from "minimatch";
 
-import { forEachWorkspace } from "../utils/workspace";
+import { forEachWorkspace, pkgName } from "../utils/workspace";
 import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
+import { getRoot } from "../utils/yarn";
 
 export default class Version extends BaseCommand {
   static usage: Usage = Command.Usage({
@@ -28,6 +29,7 @@ export default class Version extends BaseCommand {
       If no version is specified, it will prompt for it.
 
       - The \`-f,--force\` option allows you to specify a package that must be updated even if git doesn't detect any change. It can be specified multiple times, for multiple packages.
+      - If the \`--all\` option is specified, every package will be updated.
       - The \`--yes\` option disables the confirmation prompts.
       - If \`--tag-version-prefix\` is specified, it will be used to build the tag name (default: \`v\`).
     `,
@@ -45,9 +47,15 @@ export default class Version extends BaseCommand {
   @Command.String("--tag-version-prefix")
   tagVersionPrefix!: string | undefined;
 
+  @Command.Boolean("--all")
+  all!: boolean;
+
   @Command.Path("release-tool", "version")
   async execute() {
-    const { configuration, project, cache } = await this.getRoot();
+    const { configuration, project, cache } = await getRoot(
+      "release-tool version",
+      this.context
+    );
     const { lastTagName, lastVersion } = await git.getLastTag();
 
     const ignoreChanges =
@@ -90,30 +98,6 @@ export default class Version extends BaseCommand {
     await this.gitCommitAndTag(nextVersion);
   }
 
-  async getRoot(): Promise<{
-    configuration: Configuration;
-    project: Project;
-    cache: Cache;
-  }> {
-    const configuration = await Configuration.find(
-      this.context.cwd,
-      this.context.plugins
-    );
-
-    const [{ project, workspace }, cache] = await Promise.all([
-      Project.find(configuration, this.context.cwd),
-      Cache.find(configuration, { immutable: true }),
-    ]);
-
-    if (project.topLevelWorkspace !== workspace) {
-      throw new Error(
-        `The "yarn version bump" command must be run in the root workspace.`
-      );
-    }
-
-    return { configuration, project, cache };
-  }
-
   async getChangedWorkspaces(
     project: Project,
     since: string,
@@ -127,7 +111,7 @@ export default class Version extends BaseCommand {
     const changedWorkspaces: Workspace[] = [];
 
     await forEachWorkspace(project, async (workspace) => {
-      if (forced.has(pkgName(workspace.manifest))) {
+      if (this.all || forced.has(pkgName(workspace.manifest))) {
         changedWorkspaces.push(workspace);
         return;
       }
@@ -221,8 +205,4 @@ export default class Version extends BaseCommand {
     await git.commit(tag);
     await git.tag(tag);
   }
-}
-
-function pkgName(m: Manifest) {
-  return m.name!.scope ? `@${m.name!.scope}/${m.name!.name}` : m.name!.name;
 }
