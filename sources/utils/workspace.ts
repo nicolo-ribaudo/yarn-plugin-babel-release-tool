@@ -1,4 +1,4 @@
-import type { Project, Workspace } from "@yarnpkg/core";
+import type { Project, Workspace, Manifest } from "@yarnpkg/core";
 
 import { asyncMap } from "./fp";
 
@@ -29,4 +29,8 @@ export function getWorkspaceChildren(
   childrens.shift(); // Remove the root workspace
 
   return childrens;
+}
+
+export function pkgName(m: Manifest) {
+  return m.name!.scope ? `@${m.name!.scope}/${m.name!.name}` : m.name!.name;
 }

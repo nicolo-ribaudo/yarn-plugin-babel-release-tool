@@ -2,6 +2,7 @@ import type { Plugin } from "@yarnpkg/core";
 import { SettingsType } from "@yarnpkg/core";
 
 import Version from "./commands/version";
+import Publish from "./commands/publish";
 
 export default {
   configuration: {
@@ -19,5 +20,5 @@ export default {
     },
   },
 
-  commands: [Version],
+  commands: [Version, Publish],
 } as Plugin;
