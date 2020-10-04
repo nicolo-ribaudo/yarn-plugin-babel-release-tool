@@ -1,4 +1,7 @@
-.yarn
-!.yarn/releases
+.yarn/cache
+.yarn/sdks
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
 .pnp.js
 .vscode
