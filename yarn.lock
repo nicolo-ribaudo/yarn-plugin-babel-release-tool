@@ -3822,9 +3822,9 @@ typescript@^3.9.5:
   languageName: node
   linkType: hard
 
-"yarn-plugin-babel-version@workspace:.":
+"yarn-plugin-babel-release-tool@workspace:.":
   version: 0.0.0-use.local
-  resolution: "yarn-plugin-babel-version@workspace:."
+  resolution: "yarn-plugin-babel-release-tool@workspace:."
   dependencies:
     "@types/node": ^14.6.3
     "@yarnpkg/builder": ^2.1.2

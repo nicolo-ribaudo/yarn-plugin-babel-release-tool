@@ -1,5 +1,5 @@
 {
-  "name": "yarn-plugin-babel-version",
+  "name": "yarn-plugin-babel-release-tool",
   "version": "0.0.1",
   "main": "./sources/index.ts",
   "license": "MIT",
