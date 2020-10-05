@@ -83,6 +83,7 @@ export default class Version extends BaseCommand {
       if (!confirm) return 0;
     }
 
+    project.topLevelWorkspace.manifest.version = nextVersion;
     this.updateManifests(changedWorkspaces, nextVersion);
 
     const report = await StreamReport.start(
