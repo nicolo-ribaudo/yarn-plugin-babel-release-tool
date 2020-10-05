@@ -64,6 +64,9 @@ export default class Publish extends BaseCommand {
           `Publishing ${workspaces.size} packages`,
           () => this.publishPackages(graph, metadata, configuration, report)
         );
+        if (report.hasErrors()) return;
+
+        await this.runLifecycleScript(workspaces, "postpublish", { report });
       }
     );
 
@@ -132,6 +135,11 @@ export default class Publish extends BaseCommand {
     await scriptUtils.maybeExecuteWorkspaceLifecycleScript(
       workspace,
       "prepublish",
+      { report }
+    );
+    await scriptUtils.maybeExecuteWorkspaceLifecycleScript(
+      workspace,
+      "prepublishOnly",
       { report }
     );
     await scriptUtils.maybeExecuteWorkspaceLifecycleScript(
@@ -250,5 +258,18 @@ export default class Publish extends BaseCommand {
     });
 
     return confirm as boolean;
+  }
+
+  async runLifecycleScript(workspaces, script, opts) {
+    const limit = pLimit(4);
+    const promises: Promise<unknown>[] = [];
+    for (const ws of workspaces) {
+      promises.push(
+        limit(() =>
+          scriptUtils.maybeExecuteWorkspaceLifecycleScript(ws, script, opts)
+        )
+      );
+    }
+    await Promise.all(promises);
   }
 }
