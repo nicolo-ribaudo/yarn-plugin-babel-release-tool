@@ -1,5 +1,5 @@
 import { BaseCommand } from "@yarnpkg/cli";
-import { Command, UsageError } from "clipanion";
+import { Command, UsageError, Usage } from "clipanion";
 import path from "path";
 import pLimit from "p-limit";
 import inquirer from "inquirer";
@@ -21,6 +21,17 @@ import * as npmPublishUtils from "../utils/npm-publish";
 import { compareBy } from "../utils/fp";
 
 export default class Publish extends BaseCommand {
+  static usage: Usage = Command.Usage({
+    description: "Publish on npm the packages updated in the last version",
+    details: `
+      This command will first check that the current git HEAD correspond to a version tag (generated with \`yarn release-tool version\`), then it will upload the packages modified in that commit to the npm registry.
+
+      - The \`--tag\` option allows you to specify how to tag this release on npm (default: \`latest\`)
+      - The \`--yes\` option disables the confirmation prompt.
+      - If \`--tag-version-prefix\` is specified, it will be used to find the correct tag name (default: \`v\`).
+    `,
+  });
+
   @Command.Boolean("--yes")
   yes!: boolean;
 
