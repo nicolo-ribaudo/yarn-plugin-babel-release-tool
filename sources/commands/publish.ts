@@ -201,6 +201,12 @@ export default class Publish extends BaseCommand {
                 configuration,
                 report
               );
+            } catch (e) {
+              report.reportError(
+                MessageName.UNNAMED,
+                `Error while publishing ${workspace.manifest.name}:\n${e}`
+              );
+              throw e;
             } finally {
               graph.deleteWorkspace(workspace);
             }
