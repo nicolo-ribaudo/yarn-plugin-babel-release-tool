@@ -171,22 +171,16 @@ export default class Version extends BaseCommand {
   updateManifests(updatedWorkspaces: Workspace[], nextVersion: string) {
     const newRange = `workspace:^${nextVersion}`;
 
-    const dependencyTypes: HardDependencies[] = [
-      "dependencies",
-      "devDependencies",
-    ];
     for (const workspace of updatedWorkspaces) {
       const { manifest } = workspace;
       manifest.version = nextVersion;
 
-      for (const dependencyType of dependencyTypes) {
-        for (const workspace of updatedWorkspaces) {
-          const { identHash } = workspace.manifest.name!;
-          const desc = manifest[dependencyType].get(identHash);
-          if (desc?.range.startsWith("workspace:")) {
-            const newDesc = structUtils.makeDescriptor(desc, newRange);
-            manifest[dependencyType].set(identHash, newDesc);
-          }
+      for (const workspace of updatedWorkspaces) {
+        const { identHash } = workspace.manifest.name!;
+        const desc = manifest.dependencies.get(identHash);
+        if (desc?.range.startsWith("workspace:")) {
+          const newDesc = structUtils.makeDescriptor(desc, newRange);
+          manifest.dependencies.set(identHash, newDesc);
         }
       }
     }
