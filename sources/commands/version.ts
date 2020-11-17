@@ -15,7 +15,7 @@ import inquirer from "inquirer";
 import semver from "semver";
 import minimatch from "minimatch";
 
-import { forEachWorkspace, pkgName } from "../utils/workspace";
+import * as ws from "../utils/workspace";
 import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
 import { getRoot } from "../utils/yarn";
@@ -84,7 +84,11 @@ export default class Version extends BaseCommand {
     }
 
     project.topLevelWorkspace.manifest.version = nextVersion;
-    this.updateManifests(changedWorkspaces, nextVersion);
+    this.updateManifests(
+      changedWorkspaces,
+      ws.getWorkspaceChildren(project.topLevelWorkspace, project),
+      nextVersion
+    );
 
     const report = await StreamReport.start(
       { configuration, stdout: this.context.stdout, includeLogs: true },
@@ -113,8 +117,8 @@ export default class Version extends BaseCommand {
 
     const changedWorkspaces: Workspace[] = [];
 
-    await forEachWorkspace(project, async (workspace) => {
-      if (this.all || forced.has(pkgName(workspace.manifest))) {
+    await ws.forEachWorkspace(project, async (workspace) => {
+      if (this.all || forced.has(ws.pkgName(workspace.manifest))) {
         changedWorkspaces.push(workspace);
         return;
       }
@@ -154,7 +158,7 @@ export default class Version extends BaseCommand {
     console.log("");
     console.log("Changes:");
     for (const { manifest: m } of packages) {
-      console.log(` - ${pkgName(m)}: ${m.version} => ${version}`);
+      console.log(` - ${ws.pkgName(m)}: ${m.version} => ${version}`);
     }
     console.log("");
 
@@ -168,15 +172,22 @@ export default class Version extends BaseCommand {
     return confirm;
   }
 
-  updateManifests(updatedWorkspaces: Workspace[], nextVersion: string) {
-    const newRange = `workspace:^${nextVersion}`;
-
-    for (const workspace of updatedWorkspaces) {
-      const { manifest } = workspace;
+  updateManifests(
+    updatedWorkspaces: Workspace[],
+    allWorkspaces: Workspace[],
+    nextVersion: string
+  ) {
+    // First, update the version of the packages to be released
+    for (const { manifest } of updatedWorkspaces) {
       manifest.version = nextVersion;
+    }
 
-      for (const workspace of updatedWorkspaces) {
-        const { identHash } = workspace.manifest.name!;
+    // Then bump their local dependencies to the latest version
+    for (const { manifest } of updatedWorkspaces) {
+      for (const { manifest: dep } of allWorkspaces) {
+        const { identHash } = dep.name!;
+        const newRange = `workspace:^${dep.version}`;
+
         const desc = manifest.dependencies.get(identHash);
         if (desc?.range.startsWith("workspace:")) {
           const newDesc = structUtils.makeDescriptor(desc, newRange);
