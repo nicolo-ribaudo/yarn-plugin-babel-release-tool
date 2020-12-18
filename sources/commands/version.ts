@@ -1,13 +1,4 @@
-import {
-  Cache,
-  Configuration,
-  HardDependencies,
-  Project,
-  StreamReport,
-  Workspace,
-  structUtils,
-  Manifest,
-} from "@yarnpkg/core";
+import { Project, StreamReport, Workspace, structUtils } from "@yarnpkg/core";
 import { BaseCommand } from "@yarnpkg/cli";
 import { Command, Usage } from "clipanion";
 
@@ -19,6 +10,11 @@ import * as ws from "../utils/workspace";
 import * as git from "../utils/git";
 import { compareBy } from "../utils/fp";
 import { getRoot } from "../utils/yarn";
+
+type ReleaseToolConfig = {
+  get(key: "ignoreChanges"): string[];
+  get(key: "implicitDependencies"): Map<string, string[]>;
+};
 
 export default class Version extends BaseCommand {
   static usage: Usage = Command.Usage({
@@ -32,6 +28,10 @@ export default class Version extends BaseCommand {
       - If the \`--all\` option is specified, every package will be updated.
       - The \`--yes\` option disables the confirmation prompts.
       - If \`--tag-version-prefix\` is specified, it will be used to build the tag name (default: \`v\`).
+
+      This command also reads two options from the .yarnrc.yml file:
+      - \`releaseTool.ignoreChanges\` allows you to specify an array of file patterns to ignore when computing the updated packages.
+      - \`releaseTool.implicitDependencies\` allows you to specify implicit build-time dependencies between packages. When an implicit dependency package is updated, also the implicit dependents will be released.
     `,
   });
 
@@ -58,15 +58,17 @@ export default class Version extends BaseCommand {
     );
     const { lastTagName, lastVersion } = await git.getLastTag();
 
-    const ignoreChanges =
-      project.configuration
-        .get<Map<string, string[]>>("releaseTool")
-        ?.get("ignoreChanges") ?? [];
+    const config = project.configuration.get<ReleaseToolConfig>("releaseTool");
+
+    const ignoreChanges = config?.get("ignoreChanges") ?? [];
+    const implicitDependencies =
+      config?.get("implicitDependencies") ?? new Map();
 
     const changedWorkspaces = await this.getChangedWorkspaces(
       project,
       lastTagName,
       ignoreChanges,
+      implicitDependencies,
       new Set(this.forceUpdates)
     );
 
@@ -109,17 +111,22 @@ export default class Version extends BaseCommand {
     project: Project,
     since: string,
     ignorePatterns: string[],
+    implicitDependents: Map<string, string[]>,
     forced: Set<string>
   ) {
     const ignoreFilters = ignorePatterns.map((p) =>
       minimatch.filter(`!${p}`, { matchBase: true, dot: true })
     );
 
-    const changedWorkspaces: Workspace[] = [];
+    const changedWorkspaces = new Set<Workspace>();
+    const nameToWorkspace = new Map<string, Workspace>();
 
     await ws.forEachWorkspace(project, async (workspace) => {
-      if (this.all || forced.has(ws.pkgName(workspace.manifest))) {
-        changedWorkspaces.push(workspace);
+      const name = ws.pkgName(workspace.manifest);
+      nameToWorkspace.set(name, workspace);
+
+      if (this.all || forced.has(name)) {
+        changedWorkspaces.add(workspace);
         return;
       }
 
@@ -128,11 +135,32 @@ export default class Version extends BaseCommand {
         await git.getChangedFiles(since, workspace.cwd)
       );
       if (changedFiles.length > 0) {
-        changedWorkspaces.push(workspace);
+        changedWorkspaces.add(workspace);
       }
     });
 
-    return changedWorkspaces.sort(compareBy("cwd"));
+    // The proper way of doing this would be to topologically sort the packages
+    // considering the implicit dependencies, but this is easier and it works
+    // with cycles: we continue looping and stop when there are no more changes.
+    let changed;
+    do {
+      changed = false;
+      for (const [dependent, dependencies] of implicitDependents) {
+        const dependentWs = nameToWorkspace.get(dependent)!;
+        if (changedWorkspaces.has(dependentWs)) continue;
+
+        for (const dep of dependencies) {
+          const depWs = nameToWorkspace.get(dep)!;
+          if (changedWorkspaces.has(depWs)) {
+            changed = true;
+            changedWorkspaces.add(dependentWs);
+            break;
+          }
+        }
+      }
+    } while (changed);
+
+    return Array.from(changedWorkspaces).sort(compareBy("cwd"));
   }
 
   async promptVersion(

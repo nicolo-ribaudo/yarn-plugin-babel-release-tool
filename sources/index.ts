@@ -16,6 +16,16 @@ export default {
           isArray: true,
           default: [],
         },
+        implicitDependencies: {
+          description: "",
+          type: SettingsType.MAP,
+          valueDefinition: {
+            description: "",
+            type: SettingsType.STRING,
+            isArray: true,
+            default: [],
+          },
+        },
       },
     },
   },
