@@ -50,6 +50,9 @@ export default class Version extends BaseCommand {
   @Command.Boolean("--all")
   all!: boolean;
 
+  @Command.Boolean("--dry")
+  dry!: boolean;
+
   @Command.Path("release-tool", "version")
   async execute() {
     const { configuration, project, cache } = await getRoot(
@@ -72,13 +75,27 @@ export default class Version extends BaseCommand {
       new Set(this.forceUpdates)
     );
 
-    const nextVersion =
-      this.version ??
-      (await this.promptVersion(lastVersion, {
-        Patch: semver.inc(lastVersion, "patch"),
-        Minor: semver.inc(lastVersion, "minor"),
-        Major: semver.inc(lastVersion, "major"),
-      }));
+    let nextVersion;
+    if (
+      this.version === "patch" ||
+      this.version === "minor" ||
+      this.version === "major"
+    ) {
+      nextVersion = semver.inc(lastVersion, this.version);
+    } else {
+      nextVersion =
+        this.version ??
+        (await this.promptVersion(lastVersion, {
+          Patch: semver.inc(lastVersion, "patch"),
+          Minor: semver.inc(lastVersion, "minor"),
+          Major: semver.inc(lastVersion, "major"),
+        }));
+    }
+
+    if (this.dry) {
+      this.logChanges(nextVersion, changedWorkspaces);
+      return;
+    }
 
     if (!this.yes) {
       const confirm = await this.promptConfirm(nextVersion, changedWorkspaces);
@@ -183,12 +200,7 @@ export default class Version extends BaseCommand {
   }
 
   async promptConfirm(version: string, packages: Workspace[]) {
-    console.log("");
-    console.log("Changes:");
-    for (const { manifest: m } of packages) {
-      console.log(` - ${ws.pkgName(m)}: ${m.version} => ${version}`);
-    }
-    console.log("");
+    this.logChanges(version, packages);
 
     const { confirm } = await inquirer.prompt({
       type: "confirm",
@@ -198,6 +210,15 @@ export default class Version extends BaseCommand {
     });
 
     return confirm;
+  }
+
+  logChanges(version: string, packages: Workspace[]) {
+    console.log("");
+    console.log("Changes:");
+    for (const { manifest: m } of packages) {
+      console.log(` - ${ws.pkgName(m)}: ${m.version} => ${version}`);
+    }
+    console.log("");
   }
 
   updateManifests(
