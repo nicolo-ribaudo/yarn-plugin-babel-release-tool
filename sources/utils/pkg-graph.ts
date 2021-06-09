@@ -115,16 +115,24 @@ export default class PackageGraph extends Set<Node> {
 
   detectCycles(report: Report) {
     const walkStack: PackageNode[] = [];
+    const visited = new WeakSet<Node>();
 
     const visit = (node: Node) => {
       for (let i = 0; i < walkStack.length - 1; i++) {
         if (node === walkStack[i]) {
+          const cycle = walkStack.slice(i);
+          cycle.push(walkStack[i]);
+
           report.reportError(
             MessageName.CYCLIC_DEPENDENCIES,
-            `Dependency cycle detected: ${walkStack.slice(i).join(",")}`
+            `Dependency cycle detected: ${cycle.join(" -> ")}`
           );
+          return;
         }
       }
+
+      if (visited.has(node)) return;
+      visited.add(node);
 
       walkWithStack(node);
     };

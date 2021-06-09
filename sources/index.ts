@@ -3,6 +3,7 @@ import { SettingsType } from "@yarnpkg/core";
 
 import Version from "./commands/version";
 import Publish from "./commands/publish";
+import CheckCycles from "./commands/check-cycles";
 
 export default {
   configuration: {
@@ -30,5 +31,5 @@ export default {
     },
   },
 
-  commands: [Version, Publish],
+  commands: [Version, Publish, CheckCycles],
 } as Plugin;
