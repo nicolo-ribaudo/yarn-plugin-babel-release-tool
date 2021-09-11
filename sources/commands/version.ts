@@ -47,9 +47,9 @@ export default class Version extends BaseCommand {
 
   tagVersionPrefix: string | undefined = Option.String("--tag-version-prefix");
 
-  all: boolean = Option.Boolean("--yes", false);
+  all: boolean = Option.Boolean("--all", false);
 
-  dry: boolean = Option.Boolean("--yes", false);
+  dry: boolean = Option.Boolean("--dry", false);
 
   async execute() {
     const { configuration, project, cache } = await getRoot(
