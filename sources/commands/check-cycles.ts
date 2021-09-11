@@ -1,17 +1,20 @@
 import { BaseCommand } from "@yarnpkg/cli";
-import { Command, Usage } from "clipanion";
+import { Command } from "clipanion";
 import { getRoot } from "../utils/yarn";
 import { Workspace, Project, StreamReport } from "@yarnpkg/core";
 import { forEachWorkspace } from "../utils/workspace";
 import PackageGraph from "../utils/pkg-graph";
 
 export default class Publish extends BaseCommand {
-  static usage: Usage = Command.Usage({
+  static paths = [
+    ["release-tool", "check-cycles"],
+  ];
+
+  static usage = Command.Usage({
     description:
       "Assert that there aren't dependency cycles that can cause problems while publishing.",
   });
 
-  @Command.Path("release-tool", "check-cycles")
   async execute() {
     const { project, configuration } = await getRoot(
       "release-tool check-cycles",

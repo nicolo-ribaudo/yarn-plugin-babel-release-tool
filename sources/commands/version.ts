@@ -1,6 +1,6 @@
 import { Project, StreamReport, Workspace, structUtils } from "@yarnpkg/core";
 import { BaseCommand } from "@yarnpkg/cli";
-import { Command, Usage } from "clipanion";
+import { Command, Option } from "clipanion";
 
 import inquirer from "inquirer";
 import semver from "semver";
@@ -17,7 +17,11 @@ type ReleaseToolConfig = {
 };
 
 export default class Version extends BaseCommand {
-  static usage: Usage = Command.Usage({
+  static paths = [
+    ["release-tool", "version"],
+  ];
+
+  static usage = Command.Usage({
     description: "Bump the version of the updated packages",
     details: `
       This command will check which packages have been changed since the last git tag. Then, it update the package.json files and then create a new git tag.
@@ -35,25 +39,18 @@ export default class Version extends BaseCommand {
     `,
   });
 
-  @Command.String({ required: false })
-  version!: string | undefined;
+  version: string | undefined = Option.String("--version", { required: false });
 
-  @Command.Array("-f,--force-update")
-  forceUpdates!: string[];
+  forceUpdates: string[] = Option.Array("-f,--force-update") || [];
 
-  @Command.Boolean("--yes")
-  yes!: boolean;
+  yes: boolean = Option.Boolean("--yes", false);
 
-  @Command.String("--tag-version-prefix")
-  tagVersionPrefix!: string | undefined;
+  tagVersionPrefix: string | undefined = Option.String("--tag-version-prefix");
 
-  @Command.Boolean("--all")
-  all!: boolean;
+  all: boolean = Option.Boolean("--yes", false);
 
-  @Command.Boolean("--dry")
-  dry!: boolean;
+  dry: boolean = Option.Boolean("--yes", false);
 
-  @Command.Path("release-tool", "version")
   async execute() {
     const { configuration, project, cache } = await getRoot(
       "release-tool version",
@@ -61,7 +58,7 @@ export default class Version extends BaseCommand {
     );
     const { lastTagName, lastVersion } = await git.getLastTag();
 
-    const config = project.configuration.get<ReleaseToolConfig>("releaseTool");
+    const config = project.configuration.get("releaseTool") as ReleaseToolConfig;
 
     const ignoreChanges = config?.get("ignoreChanges") ?? [];
     const implicitDependencies =

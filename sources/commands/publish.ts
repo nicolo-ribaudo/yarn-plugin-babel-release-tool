@@ -1,5 +1,5 @@
 import { BaseCommand } from "@yarnpkg/cli";
-import { Command, UsageError, Usage } from "clipanion";
+import { Command, Option, UsageError } from "clipanion";
 import path from "path";
 import pLimit from "p-limit";
 import inquirer from "inquirer";
@@ -21,7 +21,11 @@ import * as npmPublishUtils from "../utils/npm-publish";
 import { compareBy } from "../utils/fp";
 
 export default class Publish extends BaseCommand {
-  static usage: Usage = Command.Usage({
+  static paths = [
+    ["release-tool", "publish"],
+  ];
+
+  static usage = Command.Usage({
     description: "Publish on npm the packages updated in the last version",
     details: `
       This command will first check that the current git HEAD correspond to a version tag (generated with \`yarn release-tool version\`), then it will upload the packages modified in that commit to the npm registry.
@@ -32,16 +36,12 @@ export default class Publish extends BaseCommand {
     `,
   });
 
-  @Command.Boolean("--yes")
-  yes!: boolean;
+  yes: boolean = Option.Boolean("--yes", false);
 
-  @Command.String("--tag")
-  tag: string = "latest";
+  tag: string = Option.String("--tag", "latest");
 
-  @Command.String("--tag-version-prefix")
-  tagVersionPrefix: string = "v";
+  tagVersionPrefix: string = Option.String("--tag-version-prefix", "v");
 
-  @Command.Path("release-tool", "publish")
   async execute() {
     const { project, configuration } = await getRoot(
       "release-tool publish",
@@ -159,13 +159,15 @@ export default class Publish extends BaseCommand {
       { report }
     );
 
+    const body = await npmPublishUtils.generateTarballBody(
+      workspace,
+      registry,
+      this.tag
+    );
+
     return {
       registry,
-      body: await npmPublishUtils.generateTarballBody(
-        workspace,
-        registry,
-        this.tag
-      ),
+      body,
     };
   }
 
