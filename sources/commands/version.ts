@@ -39,7 +39,7 @@ export default class Version extends BaseCommand {
     `,
   });
 
-  version: string | undefined = Option.String("--version", { required: false });
+  version: string | undefined = Option.String({ required: false });
 
   forceUpdates: string[] = Option.Array("-f,--force-update") || [];
 
