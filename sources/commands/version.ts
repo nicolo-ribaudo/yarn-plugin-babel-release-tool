@@ -234,9 +234,10 @@ export default class Version extends BaseCommand {
         const { identHash } = dep.name!;
 
         const desc = manifest.dependencies.get(identHash);
-        if (desc?.range.includes("workspace:")) {
+        const workspaceRE = /workspace:(?=\^?\d)[\w\^\.\-]+/g;
+        if (desc && workspaceRE.test(desc.range)) {
           const newRange = desc.range.replace(
-            /workspace:[\w\^\~\.\*\-]+/g,
+            workspaceRE,
             `workspace:^${dep.version}`
           );
           const newDesc = structUtils.makeDescriptor(desc, newRange);
