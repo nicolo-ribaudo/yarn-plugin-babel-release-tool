@@ -56,9 +56,13 @@ export default class Version extends BaseCommand {
       "release-tool version",
       this.context
     );
-    const { lastTagName, lastVersion } = await git.getLastTag();
+    const { lastTagName, lastVersion } = await git.getLastTag(
+      this.version === "prerelease"
+    );
 
-    const config = project.configuration.get("releaseTool") as ReleaseToolConfig;
+    const config = project.configuration.get(
+      "releaseTool"
+    ) as ReleaseToolConfig;
 
     const ignoreChanges = config?.get("ignoreChanges") ?? [];
     const implicitDependencies =
@@ -75,6 +79,7 @@ export default class Version extends BaseCommand {
     let nextVersion;
     if (
       this.version === "patch" ||
+      this.version === "prerelease" ||
       this.version === "minor" ||
       this.version === "major"
     ) {
@@ -83,9 +88,9 @@ export default class Version extends BaseCommand {
       nextVersion =
         this.version ??
         (await this.promptVersion(lastVersion, {
-          Patch: semver.inc(lastVersion, "patch"),
-          Minor: semver.inc(lastVersion, "minor"),
-          Major: semver.inc(lastVersion, "major"),
+          Patch: semver.inc(lastVersion, "patch")!,
+          Minor: semver.inc(lastVersion, "minor")!,
+          Major: semver.inc(lastVersion, "major")!,
         }));
     }
 
