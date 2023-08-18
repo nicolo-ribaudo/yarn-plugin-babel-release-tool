@@ -5,3 +5,4 @@
 .yarn/install-state.gz
 .pnp.cjs
 .vscode
+node_modules
