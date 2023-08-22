@@ -22,5 +22,6 @@
   },
   "scripts": {
     "build": "builder build plugin"
-  }
+  },
+  "packageManager": "yarn@3.6.2"
 }
