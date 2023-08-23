@@ -1,19 +1,16 @@
 import { run } from "./node";
 
+
 // https://github.com/lerna/lerna/blob/master/utils/describe-ref/lib/describe-ref.js
-export async function getLastTag() {
-  const { stdout } = await run(`git describe --long --dirty --first-parent`);
+export async function getLastTag(unstable: boolean = false) {
+  const { stdout } = await run(
+    `git describe --abbrev=0 --first-parent ${unstable ? "--match" : "--exclude"} "*-*"`
+  );
 
-  const [, lastTagName, lastVersion, refCount, sha, isDirty] =
-    /^((?:.*@)?(.*))-(\d+)-g([0-9a-f]+)(-dirty)?$/.exec(stdout) || [];
+  const [, name, version] =
+    /^((?:.*@)?(.*))$/.exec(stdout) || [];
 
-  return {
-    lastTagName,
-    lastVersion,
-    refCount,
-    sha,
-    isDirty: Boolean(isDirty),
-  };
+  return { name, version };
 }
 
 export async function getHeadTags(pattern: string) {
