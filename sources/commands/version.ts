@@ -16,10 +16,12 @@ type ReleaseToolConfig = {
   get(key: "implicitDependencies"): Map<string, string[]>;
 };
 
+function isPreRelease(version: string) {
+  return version.includes("-");
+}
+
 export default class Version extends BaseCommand {
-  static paths = [
-    ["release-tool", "version"],
-  ];
+  static paths = [["release-tool", "version"]];
 
   static usage = Command.Usage({
     description: "Bump the version of the updated packages",
@@ -56,9 +58,58 @@ export default class Version extends BaseCommand {
       "release-tool version",
       this.context
     );
-    const { lastTagName, lastVersion } = await git.getLastTag(
-      this.version === "prerelease"
+
+    const [lastTag, lastPrereleaseTag] = await Promise.all([
+      git.getLastTag(false),
+      git.getLastTag(true),
+    ]);
+    let ignoreLastPrerelease = semver.gt(
+      lastTag.version,
+      lastPrereleaseTag.version
     );
+
+    let previousTag;
+    let nextVersion;
+    if (
+      this.version === "patch" ||
+      this.version === "minor" ||
+      this.version === "major"
+    ) {
+      nextVersion = semver.inc(lastTag.version, this.version);
+      previousTag = lastTag;
+    } else if (this.version === "prerelease") {
+      if (ignoreLastPrerelease) {
+        throw new Error(
+          "You must explicitly define which prerelease version you want."
+        );
+      }
+      nextVersion = semver.inc(lastPrereleaseTag.version, this.version);
+      previousTag = lastPrereleaseTag;
+    } else if (this.version != null) {
+      nextVersion = this.version;
+      previousTag =
+        isPreRelease(nextVersion) && !ignoreLastPrerelease
+          ? lastPrereleaseTag
+          : lastTag;
+    } else {
+      let currentDesc = lastTag.version;
+
+      let options: Record<string, string> = {
+        Patch: semver.inc(lastTag.version, "patch"),
+        Minor: semver.inc(lastTag.version, "minor"),
+        Major: semver.inc(lastTag.version, "major"),
+      };
+
+      let pre;
+      if (!ignoreLastPrerelease) {
+        currentDesc += ` and ${lastPrereleaseTag.version}`;
+        pre = semver.inc(lastPrereleaseTag.version, "prerelease");
+        options = { ...options, Prerelease: pre };
+      }
+
+      nextVersion = await this.promptVersion(currentDesc, options);
+      previousTag = nextVersion === pre ? lastPrereleaseTag : lastTag;
+    }
 
     const config = project.configuration.get(
       "releaseTool"
@@ -70,29 +121,11 @@ export default class Version extends BaseCommand {
 
     const changedWorkspaces = await this.getChangedWorkspaces(
       project,
-      lastTagName,
+      previousTag.name,
       ignoreChanges,
       implicitDependencies,
       new Set(this.forceUpdates)
     );
-
-    let nextVersion;
-    if (
-      this.version === "patch" ||
-      this.version === "prerelease" ||
-      this.version === "minor" ||
-      this.version === "major"
-    ) {
-      nextVersion = semver.inc(lastVersion, this.version);
-    } else {
-      nextVersion =
-        this.version ??
-        (await this.promptVersion(lastVersion, {
-          Patch: semver.inc(lastVersion, "patch")!,
-          Minor: semver.inc(lastVersion, "minor")!,
-          Major: semver.inc(lastVersion, "major")!,
-        }));
-    }
 
     if (this.dry) {
       this.logChanges(nextVersion, changedWorkspaces);

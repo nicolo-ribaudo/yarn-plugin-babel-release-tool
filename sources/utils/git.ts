@@ -1,32 +1,16 @@
 import { run } from "./node";
 
-const prereleaseLabels = ["alpha", "beta"];
-
-function generateTagPatterns(prerelease: boolean) {
-  if (prerelease) {
-    return prereleaseLabels.map((l) => `--match "*-${l}\.*"`);
-  } else {
-    return prereleaseLabels.map((l) => `--exclude "*-${l}\.*"`);
-  }
-}
 
 // https://github.com/lerna/lerna/blob/master/utils/describe-ref/lib/describe-ref.js
-export async function getLastTag(prerelease: boolean) {
-  const filters = generateTagPatterns(prerelease);
+export async function getLastTag(unstable: boolean = false) {
   const { stdout } = await run(
-    `git describe --long --dirty --first-parent ${filters.join(" ")}`
+    `git describe --abbrev=0 --first-parent ${unstable ? "--match" : "--exclude"} "*-*"`
   );
 
-  const [, lastTagName, lastVersion, refCount, sha, isDirty] =
-    /^((?:.*@)?(.*))-(\d+)-g([0-9a-f]+)(-dirty)?$/.exec(stdout) || [];
+  const [, name, version] =
+    /^((?:.*@)?(.*))$/.exec(stdout) || [];
 
-  return {
-    lastTagName,
-    lastVersion,
-    refCount,
-    sha,
-    isDirty: Boolean(isDirty),
-  };
+  return { name, version };
 }
 
 export async function getHeadTags(pattern: string) {
