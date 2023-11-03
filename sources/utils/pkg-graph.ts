@@ -68,7 +68,7 @@ export default class PackageGraph extends Set<Node> {
 
     workspaces.forEach((workspace) => {
       const node = new PackageNode(workspace);
-      this.packages.set(workspace.locator.identHash, node);
+      this.packages.set(workspace.anchoredLocator.identHash, node);
       this.add(node);
     });
 
@@ -106,7 +106,7 @@ export default class PackageGraph extends Set<Node> {
   }
 
   deleteWorkspace(ws: Workspace) {
-    const node = this.packages.get(ws.locator.identHash);
+    const node = this.packages.get(ws.anchoredLocator.identHash);
     if (node) {
       return node.deleteWorkspace(ws) && this.delete(node);
     }

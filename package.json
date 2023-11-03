@@ -5,11 +5,11 @@
   "license": "MIT",
   "dependencies": {
     "@types/node": "^20.5.0",
-    "@yarnpkg/builder": "^3.3.0",
-    "@yarnpkg/cli": "^3.6.2",
-    "@yarnpkg/core": "^3.5.3",
-    "@yarnpkg/plugin-npm": "^2.7.4",
-    "@yarnpkg/plugin-pack": "^3.2.0",
+    "@yarnpkg/builder": "^4.0.0",
+    "@yarnpkg/cli": "^4.0.1",
+    "@yarnpkg/core": "^4.0.1",
+    "@yarnpkg/plugin-npm": "^3.0.0",
+    "@yarnpkg/plugin-pack": "^4.0.0",
     "clipanion": "^3.0.1",
     "inquirer": "^8.1.2",
     "minimatch": "^3.0.4",
@@ -23,5 +23,5 @@
   "scripts": {
     "build": "builder build plugin"
   },
-  "packageManager": "yarn@3.6.2"
+  "packageManager": "yarn@4.0.1"
 }
