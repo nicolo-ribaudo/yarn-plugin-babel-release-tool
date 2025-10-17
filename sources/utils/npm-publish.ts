@@ -6,7 +6,8 @@ import { npmPublishUtils } from "@yarnpkg/plugin-npm";
 export async function generateTarballBody(
   workspace: Workspace,
   registry: string,
-  tag: string
+  tag: string,
+  provenance: boolean
 ) {
   const files = await packUtils.genPackList(workspace);
   const pack = await packUtils.genPackStream(workspace, files);
@@ -16,5 +17,6 @@ export async function generateTarballBody(
     access: undefined,
     tag,
     registry,
+    provenance,
   });
 }

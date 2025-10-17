@@ -42,6 +42,8 @@ export default class Publish extends BaseCommand {
 
   tagVersionPrefix: string = Option.String("--tag-version-prefix", "v");
 
+  provenance: boolean = Option.Boolean("--provenance", false);
+
   async execute() {
     const { project, configuration } = await getRoot(
       "release-tool publish",
@@ -162,7 +164,8 @@ export default class Publish extends BaseCommand {
     const body = await npmPublishUtils.generateTarballBody(
       workspace,
       registry,
-      this.tag
+      this.tag,
+      this.provenance,
     );
 
     return {
