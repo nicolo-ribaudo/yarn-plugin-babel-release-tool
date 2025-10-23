@@ -239,6 +239,7 @@ export default class Publish extends BaseCommand {
         ident,
         // @ts-ignore
         jsonResponse: true,
+        allowOidc: Boolean(process.env.CI && (process.env.GITHUB_ACTIONS || process.env.GITLAB))
       });
 
       report.reportInfo(
