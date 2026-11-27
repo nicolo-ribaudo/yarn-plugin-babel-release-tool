@@ -20,6 +20,15 @@ import PackageGraph from "../utils/pkg-graph";
 import * as npmPublishUtils from "../utils/npm-publish";
 import { compareBy } from "../utils/fp";
 
+type PackedPackage = {
+  // Unused when staging: npm picks the registry from its own config.
+  registry: string;
+  // The publish request body, or `null` when staging.
+  body: Object | null;
+  // The packed tarball when staging, or `null` otherwise.
+  tarball: Buffer | null;
+};
+
 export default class Publish extends BaseCommand {
   static paths = [
     ["release-tool", "publish"],
@@ -33,6 +42,8 @@ export default class Publish extends BaseCommand {
       - The \`--tag\` option allows you to specify how to tag this release on npm (default: \`latest\`)
       - The \`--yes\` option disables the confirmation prompt.
       - If \`--tag-version-prefix\` is specified, it will be used to find the correct tag name (default: \`v\`).
+      - The \`--provenance\` option generates provenance statements for the published packages.
+      - The \`--stage\` option stages the packages with \`npm stage publish\` instead of publishing them, so that they can be approved later with \`npm stage approve\`. It requires an npm version that supports staged publishing, and it uses the registry and the authentication from the npm config rather than from the Yarn one.
     `,
   });
 
@@ -43,6 +54,8 @@ export default class Publish extends BaseCommand {
   tagVersionPrefix: string = Option.String("--tag-version-prefix", "v");
 
   provenance: boolean = Option.Boolean("--provenance", false);
+
+  stage: boolean = Option.Boolean("--stage", false);
 
   async execute() {
     const { project, configuration } = await getRoot(
@@ -74,7 +87,7 @@ export default class Publish extends BaseCommand {
         }
 
         await report.startTimerPromise(
-          `Publishing ${workspaces.size} packages`,
+          `${this.stage ? "Staging" : "Publishing"} ${workspaces.size} packages`,
           () => this.publishPackages(graph, metadata, configuration, report)
         );
         if (report.hasErrors()) return;
@@ -116,7 +129,7 @@ export default class Publish extends BaseCommand {
     report: Report
   ) {
     const limit = pLimit(4);
-    const metadata = new Map<Workspace, { registry: string; body: Object }>();
+    const metadata = new Map<Workspace, PackedPackage>();
 
     const promises = Array.from(workspaces, (workspace) =>
       limit(async () => {
@@ -133,7 +146,7 @@ export default class Publish extends BaseCommand {
     workspace: Workspace,
     configuration: Configuration,
     report: Report
-  ) {
+  ): Promise<PackedPackage> {
     if (workspace.manifest.private)
       throw new UsageError("Private workspaces cannot be published");
     if (workspace.manifest.name === null || workspace.manifest.version === null)
@@ -161,6 +174,11 @@ export default class Publish extends BaseCommand {
       { report }
     );
 
+    if (this.stage) {
+      const tarball = await npmPublishUtils.generateTarball(workspace);
+      return { registry, body: null, tarball };
+    }
+
     const body = await npmPublishUtils.generateTarballBody(
       workspace,
       registry,
@@ -168,15 +186,12 @@ export default class Publish extends BaseCommand {
       this.provenance,
     );
 
-    return {
-      registry,
-      body,
-    };
+    return { registry, body, tarball: null };
   }
 
   async publishPackages(
     graph: PackageGraph,
-    metadata: Map<Workspace, { registry: string; body: Object }>,
+    metadata: Map<Workspace, PackedPackage>,
     configuration: Configuration,
     report: StreamReport
   ) {
@@ -194,22 +209,28 @@ export default class Publish extends BaseCommand {
 
       const promises: Promise<unknown>[] = [];
       for (const workspace of chunk) {
-        const { body, registry } = metadata.get(workspace)!;
+        const packed = metadata.get(workspace)!;
 
         promises.push(
           limit(async () => {
             try {
-              await this.publishPackage(
-                workspace,
-                body,
-                registry,
-                configuration,
-                report
-              );
+              if (packed.tarball) {
+                await this.stagePackage(workspace, packed.tarball, report);
+              } else {
+                await this.publishPackage(
+                  workspace,
+                  packed.body!,
+                  packed.registry,
+                  configuration,
+                  report
+                );
+              }
             } catch (e) {
               report.reportError(
                 MessageName.UNNAMED,
-                `Error while publishing ${workspace.manifest.name}:\n${e}`
+                `Error while ${
+                  this.stage ? "staging" : "publishing"
+                } ${pkgName(workspace.manifest)}:\n${e}`
               );
               throw e;
             } finally {
@@ -263,6 +284,21 @@ export default class Publish extends BaseCommand {
     }
   }
 
+  async stagePackage(workspace: Workspace, tarball: Buffer, report: Report) {
+    const stageId = await npmPublishUtils.stageTarball(
+      workspace,
+      tarball,
+      this.tag,
+      this.provenance
+    );
+
+    report.reportInfo(
+      null,
+      `Staged ${pkgName(workspace.manifest)} ${workspace.manifest.version}` +
+        (stageId ? ` (stage id: ${stageId})` : "")
+    );
+  }
+
   async promptConfirm(packages: Set<Workspace>) {
     const pkgs = Array.from(packages).sort(compareBy("cwd"));
 
@@ -276,7 +312,9 @@ export default class Publish extends BaseCommand {
     const { confirm } = await inquirer.prompt({
       type: "confirm",
       name: "confirm",
-      message: "Are you sure you want to create these versions?",
+      message: `Are you sure you want to ${
+        this.stage ? "stage" : "create"
+      } these versions?`,
       default: false,
     });
 
